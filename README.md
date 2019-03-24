@@ -13,5 +13,5 @@ This project is organized as follows:
 
 ## ToDo
 
-[ ] Paper outline
-[ ] Finish this list
+- [ ] Paper outline
+- [ ] Finish this list
