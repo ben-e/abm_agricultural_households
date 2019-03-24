@@ -6,9 +6,12 @@ This is an attempt at applying agent based modeling (ABM) to microeconomic agric
 
 This project is organized as follows:
 
-* data
-    * raw: Raw data that has not been altered.
-    * processed: Data that has been transformed, combined, etc. in some way.
-* figures: Plots and figures.
-* notebooks: I use notebooks (in the spirit of Jupyter notebooks) to explore new ideas informally.
-* r: R scripts that do things.
+* data: Datasets.
+* figures: Figures.
+* notebooks: I use notebooks to explore new ideas informally. These are not necessarily Jupyter or Rmd notebooks.
+* r: R scripts that do things more defined than notebooks.
+
+## ToDo
+
+[ ] Paper outline.
+[ ] Finish this list.

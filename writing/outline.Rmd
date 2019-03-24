@@ -1,0 +1,128 @@
+---
+title: 'Outline: Agent Based Agricultural Household Modeling'
+author: "Ben Ewing"
+date: "March 23, 2019"
+output:
+  pdf_document: 
+    fig_caption: yes
+header-includes:
+ - \usepackage{float}
+bibliography: lit.bib
+---
+
+```{r setup, include = F}
+# Libraries
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(ggthemes)
+
+# Plot and knitr settings
+theme_set(theme_minimal())
+opts_chunk$set(fig.align = "center", fig.pos = "H", echo = F, warning = F)
+
+# Data
+# I will be keeping this dataset out of this repo, it contains private data
+df <- readRDS("../../../../../projects/tensec_v13/data/processed/tensec_datasets.rds")
+# Create a combined TGCC and CFP dataset
+df <- tibble(
+  dataset = c(df$cfp_hh$dataset, df$tgcc_hh$dataset),
+  hh_size = c(df$cfp_hh$hh_size, df$tgcc_hh$size_hh),
+  farea = c(
+    rowSums(select(df$cfp_hh, matches("farea_")), na.rm = T),
+    rowSums(select(df$tgcc_hh, matches("farea_F")), na.rm = T)
+  )
+) %>% 
+  na.omit() %>% 
+  filter(farea <= 15) %>% 
+  mutate(dataset = case_when(dataset == "cfp_hh" ~ "CFP", dataset == "tgcc_hh" ~ "TGCC"))
+```
+
+## Outline
+
+This paper will follow less in the footsteps of @SinghSquireStrauss1986, and more in the in the spirit of @Besley20104525. Farmers produce a single good with a standard Cobb Douglas production function:
+
+\begin{equation}
+AK^\beta L^\alpha.
+\label{eq:prod}
+\end{equation}
+
+This good generates utility using a concave (risk averse) function that is linear in consumption and utility <!-- add a scaling factor to leisure? Maybe it should not generate as much utility as consumption -->, with an absolute risk-aversion parameter, borrowed from @xyw2015:
+
+\begin{equation}
+-\exp(-(x+l)*r) + 1.
+\label{eq:util}
+\end{equation}
+
+Where $x$ is consumption, $l$ is leisure, and $r$ is the Arrow-Pratt measure of absolute risk aversion. The $1$ is added to achieve a positive utility, which is ultimately just convenient for the optimization algorithms used in this paper. <!-- Add that agents are more risk averse closer to starvation line? --> We can think of this good as being tradeable, in a market that clears, for any other good that generates utility.
+
+In this model, technology should be thought of as durable farming equipment, capital as productive land area, and labor as household size (this will be an integer for convenience). In the basic models, technology is fixed at 1. Households must consume must consume one unit of output per unit of labor, or else labor falls in the next period (in other words, agents can die).
+
+## Empirical Grounding
+
+Where possible, simulation parameters will be grounded in empirical data. Specifically, I will use two surveys of rural agricultural households in Zambia: @cfp and @tgcc.
+
+### Labor Endowment
+
+Labor endowment for each agent will be drawn from a gamma distribution fit to the survey data on household size.
+
+```{r gamma-labor-plot, fig.cap = "\\label{fig: figs}Labor Endowment Distribution"}
+bind_rows(
+  df,
+  tibble(dataset = "Gamma", hh_size = rgamma(nrow(df), 4.5, 0.75))
+) %>% 
+  ggplot(aes(hh_size, colour = dataset, fill = dataset)) +
+  geom_density(alpha = 0.1) +
+  facet_wrap(. ~ dataset, ncol = 1) +
+  scale_colour_few() +
+  scale_fill_few() +
+  lims(x = c(0, 20)) +
+  labs(x = "Household Size", y = "Density", fill = "Dataset", colour = "Dataset")
+```
+
+### Capital Endowment
+
+Capital endowment will likewise be drawn from a gamma distribution tuned to match the distribution of productive farmland in the survey data.
+
+```{r gamma-capital-plot, fig.cap = "\\label{fig: figs}Capital Endowment Distribution"}
+bind_rows(
+  df,
+  tibble(dataset = "Gamma", farea = rgamma(nrow(df), 2.5, 0.65))
+) %>% 
+  ggplot(aes(farea, colour = dataset, fill = dataset)) +
+  geom_density(alpha = 0.1) +
+  facet_wrap(. ~ dataset, ncol = 1) +
+  scale_colour_few() +
+  scale_fill_few() +
+  lims(x = c(0, 15)) +
+  labs(x = "Productive Field Area (ha)", y = "Density", 
+       fill = "Dataset", colour = "Dataset")
+```
+
+### Arrow-Pratt Coefficient of Absolute Risk Aversion
+
+<!-- OK, how do I find the distribution of risk from agricultural data? -->
+
+## The Basic Model
+
+* Agents only have labor/leisure choice
+
+## Technology
+
+* Agents can now invest some product in production technology for future periods
+
+## Technology Two
+
+* Agents can choose to invest in two kinds of technology
+  * available in the next period (e.g. fertilizer)
+  * available several periods in the future (and requires some labor, e.g. agroforestry trees)
+  * Fertilizer is not permanent, should I consider permanent/temporary investments
+  
+## Land Clearing
+
+* Agents can now use some labor to clear additional land
+
+## Property Rights
+
+* Agents now consider the overall security of their land
+* Agents can also take land from other households?
