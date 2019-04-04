@@ -44,7 +44,7 @@ farmer_opt <- function(capital, labor, risk_aversion, leisure) {
 # Farmers ------------------------------------------------------------------------------------------
 # Farmers will be represented by rows in a data frame.
 
-farmers <- data_frame(
+farmers <- tibble(
   # endowment of capital, using
   capital = capital_endowment(n_agents),
   # endowment of labor (household size)

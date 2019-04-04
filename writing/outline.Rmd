@@ -14,6 +14,7 @@ bibliography: lit.bib
 # Libraries
 library(dplyr)
 library(knitr)
+library(haven)
 library(ggplot2)
 library(ggthemes)
 
@@ -22,20 +23,23 @@ theme_set(theme_minimal())
 opts_chunk$set(fig.align = "center", fig.pos = "H", echo = F, warning = F)
 
 # Data
-# I will be keeping this dataset out of this repo, it contains private data
-df <- readRDS("../../../../../projects/tensec_v13/data/processed/tensec_datasets.rds")
-# Create a combined TGCC and CFP dataset
-df <- tibble(
-  dataset = c(df$cfp_hh$dataset, df$tgcc_hh$dataset),
-  hh_size = c(df$cfp_hh$hh_size, df$tgcc_hh$size_hh),
-  farea = c(
-    rowSums(select(df$cfp_hh, matches("farea_")), na.rm = T),
-    rowSums(select(df$tgcc_hh, matches("farea_F")), na.rm = T)
-  )
-) %>% 
-  na.omit() %>% 
-  filter(farea <= 15) %>% 
-  mutate(dataset = case_when(dataset == "cfp_hh" ~ "CFP", dataset == "tgcc_hh" ~ "TGCC"))
+# full baseline dataset
+tgcc_f <- readRDS("../../../../../projects/tensec_v13/data/processed/tensec_datasets.rds")$tgcc_hh
+# the analysis dataset
+tgcc_a <- read_dta("../../../../../../Downloads/tgcc_analysis_no_pii.dta")
+```
+
+```{r prep-data}
+# clean data as needed
+
+# only using tgcc baseline
+tgcc_a <- tgcc_a %>% 
+  filter(time == 0)
+
+# merge 
+tgcc <- left_join(tgcc_a, select(tgcc_f, hh_serial, size_hh)) 
+
+tgcc$dataset <- "TGCC Baseline"
 ```
 
 ## Outline
@@ -60,7 +64,7 @@ In this model, technology should be thought of as durable farming equipment, cap
 
 ## Empirical Grounding
 
-Where possible, simulation parameters will be grounded in empirical data. Specifically, I will use two surveys of rural agricultural households in Zambia: @cfp and @tgcc.
+Where possible, simulation parameters will be grounded in empirical data. Specifically, I will use a survey of rural agricultural households in Zambia, @tgcc.
 
 ### Labor Endowment
 
@@ -68,16 +72,16 @@ Labor endowment for each agent will be drawn from a gamma distribution fit to th
 
 ```{r gamma-labor-plot, fig.cap = "\\label{fig: figs}Labor Endowment Distribution"}
 bind_rows(
-  df,
-  tibble(dataset = "Gamma", hh_size = rgamma(nrow(df), 4.5, 0.75))
+  tgcc,
+  tibble(dataset = "Gamma", size_hh = rgamma(nrow(tgcc), 3.925, 0.75))
 ) %>% 
-  ggplot(aes(hh_size, colour = dataset, fill = dataset)) +
+  ggplot(aes(size_hh, colour = dataset, fill = dataset)) +
   geom_density(alpha = 0.1) +
-  facet_wrap(. ~ dataset, ncol = 1) +
+  # facet_wrap(. ~ dataset, ncol = 1) +
   scale_colour_few() +
   scale_fill_few() +
   lims(x = c(0, 20)) +
-  labs(x = "Household Size", y = "Density", fill = "Dataset", colour = "Dataset")
+  labs(x = "Household Size", y = "Density", fill = "Dataset")
 ```
 
 ### Capital Endowment
@@ -86,7 +90,7 @@ Capital endowment will likewise be drawn from a gamma distribution tuned to matc
 
 ```{r gamma-capital-plot, fig.cap = "\\label{fig: figs}Capital Endowment Distribution"}
 bind_rows(
-  df,
+  tgcc,
   tibble(dataset = "Gamma", farea = rgamma(nrow(df), 2.5, 0.65))
 ) %>% 
   ggplot(aes(farea, colour = dataset, fill = dataset)) +
@@ -101,7 +105,27 @@ bind_rows(
 
 ### Arrow-Pratt Coefficient of Absolute Risk Aversion
 
-<!-- OK, how do I find the distribution of risk from agricultural data? -->
+I assume that CARA will have some distribution. I need to figure out what that might look like.
+
+### Output Elasticities
+
+To begin with I will use constant elasticities of capital and labor. These elasticities will be estimated from the @cfp dataset, for convenience.
+
+```{r labor-elasticity}
+# CFP had farmers estimate the total number of bags of each crop harvested across all fields
+# Average bag weight is just 50kg, so getting the kg crop harvest per household is really easy here!
+# I will still just focus on maize (crops 1, 2, 3)
+adf$cfp_hh %>% 
+  # Replace NA with 0, fine here
+  mutate_at(vars(bagsnum_1, bagsnum_2, bagsnum_3), function(x) ifelse(is.na(x), 0, x)) %>% 
+  # Drop households who report probably too many bags
+  filter(bagsnum_1 < 100, bagsnum_2 < 100, bagsnum_3 < 100) %>% 
+  mutate(maize_total_kg = bagsnum_1*50 + bagsnum_2*50 + bagsnum_3*50,
+         farea = ) %>% 
+  select(hh_size, maize_total_kg)
+```
+
+Allowing agent level variation in elasticity of capital is one way I may introduce heterogeneous soil quality.
 
 ## The Basic Model
 
